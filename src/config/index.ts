@@ -15,6 +15,11 @@ const envVarsSchema = joi
 
     WHATSAPP_NUMBER: joi.string().required(),
     WHATSAPP_TEXT: joi.string().required(),
+
+    TWILIO_SID: joi.string().required(),
+    TWILIO_TOKEN: joi.string().required(),
+    TWILIO_PHONE_NUMBER: joi.string().optional(),
+    MONGO_DB_URL: joi.string().optional(),
   })
   .unknown();
 
@@ -33,4 +38,9 @@ export default {
   LOG_SENSITIVE_DATA: envVars.LOG_SENSITIVE_DATA === "true",
   WHATSAPP_NUMBER: envVars.WHATSAPP_NUMBER,
   WHATSAPP_TEXT: envVars.WHATSAPP_TEXT,
+
+  TWILIO_SID: envVars.TWILIO_SID,
+  TWILIO_TOKEN: envVars.TWILIO_TOKEN,
+  TWILIO_PHONE_NUMBER: envVars.TWILIO_PHONE_NUMBER,
+  MONGO_DB_URL: envVars.MONGO_DB_URL
 };
