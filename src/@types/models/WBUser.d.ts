@@ -1,6 +1,8 @@
 
 interface WBUsers {
     phone_number: string | null,
+    profile_name: string | null,
+    
     _1_status: string | null, //sent | failed
     _1_answer: string | null,
     _1_twilo_status: string | null,

@@ -2,10 +2,12 @@ import config from "./config";
 import logger from "./utils/logger";
 
 import app from "./app";
+import { connect } from "./mongo/connect";
 
 import gracefulShutdown from "./utils/gracefulShutdown";
 
 const server = app.listen(config.PORT, async () => {
+  connect();
   logger.info("Server Started", { port: config.PORT });
 });
 

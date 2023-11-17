@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import config from "../config";
 import twilioHelper from "../utils/twilio";
+import WBUsers from "../mongo/models/WBUsers";
 
 const { WHATSAPP_NUMBER, WHATSAPP_TEXT } = config;
 const url = `https://wa.me/+91${WHATSAPP_NUMBER}/?text=${WHATSAPP_TEXT}`;
@@ -38,6 +39,9 @@ const questions = {
     options: "1.Option 1\n2.Option\n3.Option\n4.Option\n5.Option\n6.Option",
     accepted_answers: ["1", "2", "3", "4", "5", "6"]
   },
+  _end: {
+    display: "END",
+  },
 }
 
 const footer = `
@@ -61,71 +65,111 @@ const updateUser = (number: string, data: any) => {
   }
 }
 
-const message = async (req: Request, res: Response) => {
-  console.log(req.body);
-  const reqBody = req.body;
-  const userContact = req.body?.From?.split(":")[1];
-  const userMessage = req.body.Body;
 
-  let userExists = db.find((o: any) => o.phone_number === userContact);
-  
-  //TODO: Handle message that were not sent!
-  if (reqBody.SmsStatus !== "received") { return res.sendStatus(200); }
+const getPhoneNumber = (phoneNumber: string) => {
+  return phoneNumber.split(":")[1];
+}
+
+const isMessageSent = (status: string|null) => {
+  return ["sent", "delivered", "read"].includes(status || "");
+}
+
+const updateChatStatus = async (req: Request, res: Response) => {
+  const reqBody = req.body;
+  const smsSid = reqBody.SmsSid;
+  const userContact = getPhoneNumber(req.body?.From);
+  const findFilter = { phone_number: userContact };
+  const userExists = await WBUsers.findOne(findFilter);
+
+  if (userExists) {
+    if (userExists._1_sid === smsSid) {
+      await WBUsers.updateOne(findFilter, { _1_status: reqBody.MessageStatus });
+    } else if (userExists._2_sid === smsSid) {
+      await WBUsers.updateOne(findFilter, { _2_status: reqBody.MessageStatus });
+    } else if (userExists._3_sid === smsSid) {
+      await WBUsers.updateOne(findFilter, { _3_status: reqBody.MessageStatus });
+    }
+  }
+  // console.log("reqBody", reqBody);
+  return res.status(200).send(twiml.message("").toString());
+}
+
+
+const message = async (req: Request, res: Response) => {
+  // console.log(req.body);
+  const reqBody = req.body;
+  const userContact = getPhoneNumber(req.body?.From);
+  const userMessage = req.body.Body;
+  const userFilter = { phone_number: userContact };
+
+  const userExists = await WBUsers.findOne(userFilter);
 
   if (!userExists) {
-   //reqBody.ProfileName
     await twilioHelper.sendMessage(userContact, questions._greetings.display(""));
     await twilioHelper.sendMessage(userContact, `${questions._1.display} \n${questions._1.options}`);
     
-    db.push({
+    await WBUsers.create({
       phone_number: userContact,
-      _1_status: "sent"
-    });
+      profile_name: reqBody.ProfileName,
 
+      _1_status: "sent",
+      _1_answer: null,
+      _1_sid: reqBody.SmsSid,
+    });
   } else {
-    if (userExists._1_status === "sent") {
+
+    console.log('userExists', userExists);
+
+    if (isMessageSent(userExists._1_status) && !userExists._2_status && !userExists._3_status) {
       //QUESTION 1
       if (!questions._1.accepted_answers.includes(userMessage)) {
         await twilioHelper.sendMessage(userContact, questions._1.error_display);
       } else {
         await twilioHelper.sendMessage(userContact, `${questions._2.display} \n${questions._2.options}`);
-        updateUser(userContact, { _1_status: "received", _1_answer: userMessage,  _2_status: "sent" });
+        await WBUsers.updateOne(userFilter, {
+        //   _1_status: "sent",
+          _1_answer: userMessage,
+          _2_sid: reqBody.SmsSid,
+          _2_status: "sent",
+        })
       }
-    } else if (userExists._2_status === "sent") {
+    }
+
+    if (isMessageSent(userExists._2_status) && !userExists._3_status) {
       //QUESTION 2
       if (!questions._2.accepted_answers.includes(String(userMessage).toLowerCase())) {
-        console.log("Question 2 - invalid answer", String(userMessage).toLowerCase())
-
         await twilioHelper.sendMessage(userContact, questions._2.error_display);
       } else {
-        let dataToUpdate = { _2_status: "received", _2_answer: ["yes", "1"].includes(userMessage) ? "1" : "2", _3_status: "not_required" }
+        let dataToUpdate = { _2_answer: ["yes", "1"].includes(userMessage) ? "1" : "2" }
         if (String(userMessage).toLowerCase() === "yes" || String(userMessage).toLowerCase() === "1") {
           await twilioHelper.sendMessage(userContact, `${questions._3.display} \n${questions._3.options}`);
-          dataToUpdate._3_status = "sent";
         }
+        await WBUsers.updateOne(userFilter, {
+        //  _2_status: "sent",
+          _2_answer: userMessage,
+          _3_sid: reqBody.SmsSid,
+          _3_status: "sent",
+        })
         updateUser(userContact, dataToUpdate);
       }
-    } else if (userExists._3_status === "sent") {
+    }
+
+    if (isMessageSent(userExists._3_status) && !userExists._3_answer) {
       //QUESTION 3
       if (!questions._3.accepted_answers.includes(userMessage)) {
-        updateUser(userContact, { _2_status: "sent", _2_answer: "" });
+        // updateUser(userContact, { _2_status: "sent", _2_answer: "" });
         await twilioHelper.sendMessage(userContact, questions._2.error_display);
       } else {
-        updateUser(userContact, { _3_status: "received", _3_answer: userMessage });
-        await twilioHelper.sendMessage(userContact, "END");
+        await WBUsers.updateOne(userFilter, {
+          // _3_status: "sent",
+          _3_answer: userMessage,
+        })
+        // updateUser(userContact, { _3_status: "received", _3_answer: userMessage });
+        await twilioHelper.sendMessage(userContact, questions._end.display);
       }
     }
    }
-  //**TODO: Setup mongo db */
-  // console.log(questions);
-  // const result = await twilioHelper.sendMessage("+919137123587", "This is backend generated message");
-  // console.log(result);
-  //*STEP: You will receive message from customer*/
-  //*TODO: Check if user exists in database*/
-  //**TODO: IF user dosent exist send the greeting message followed by first question */
-  //**TODO: IF user exist check if user has already replied to first message and send the secound message */
-  //**TODO: IF user exist check if user has already replied to secound message (as yes) and send the third message *//
   return res.status(200).send(twiml.message("").toString());
 };
 
-export default { redirect, message };
+export default { redirect, message, updateChatStatus };

@@ -3,9 +3,10 @@ import { WBUsers } from "../../@types/index";
 
 const { Schema } = mongoose;
 
-const operations = new Schema<WBUsers>(
+const wbUser = new Schema<WBUsers>(
   {
-        phone_number: { type: String },
+    phone_number: { type: String },
+    profile_name: { type: String },
       
     _1_status:{ type: String }, //sent | failed
     _1_answer:{ type: String },
@@ -29,5 +30,5 @@ const operations = new Schema<WBUsers>(
   }
 );
 
-const Operations = mongoose.model("Operations", operations);
-export default Operations;
+const WbUser = mongoose.model("WbUser", wbUser);
+export default WbUser;
