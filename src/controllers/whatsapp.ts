@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import config from "../config";
 import twilioHelper from "../utils/twilio";
 import WBUsers from "../mongo/models/WBUsers";
+import path from 'path';
 
 const { WHATSAPP_NUMBER, WHATSAPP_TEXT } = config;
 const url = `https://wa.me/+91${WHATSAPP_NUMBER}/?text=${WHATSAPP_TEXT}`;
@@ -175,4 +176,10 @@ const getWBUsersList =async  (req: Request, res: Response) => {
   return res.status(200).json(usersList);
 }
 
-export default { redirect, message, updateChatStatus, getWBUsersList };
+const list =async  (req: Request, res: Response) => {
+  return res
+    .set("Content-Security-Policy", "default-src *; style-src 'self' http://* 'unsafe-inline'; script-src 'self' http://* 'unsafe-inline' 'unsafe-eval'")
+    .sendFile(path.join(__dirname, '../../view/wbusers.html'));
+}
+
+export default { redirect, message, updateChatStatus, getWBUsersList,list };
