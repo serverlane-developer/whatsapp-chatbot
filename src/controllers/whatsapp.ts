@@ -140,16 +140,24 @@ const message = async (req: Request, res: Response) => {
       if (!questions._2.accepted_answers.includes(String(userMessage).toLowerCase())) {
         await twilioHelper.sendMessage(userContact, questions._2.error_display);
       } else {
-        let dataToUpdate = { _2_answer: ["yes", "1"].includes(userMessage) ? "1" : "2" }
+        let dataToUpdate = { _2_answer: ["yes", "1"].includes(String(userMessage).toLowerCase()) ? "1" : "2" }
         if (String(userMessage).toLowerCase() === "yes" || String(userMessage).toLowerCase() === "1") {
           await twilioHelper.sendMessage(userContact, `${questions._3.display} \n${questions._3.options}`);
+          await WBUsers.updateOne(userFilter, {
+            //  _2_status: "sent",
+            _2_answer: userMessage,
+            _3_sid: reqBody.SmsSid,
+            _3_status: "sent",
+          });
+        } else {
+          await WBUsers.updateOne(userFilter, {
+            //  _2_status: "sent",
+            _2_answer: userMessage,
+            // _3_sid: reqBody.SmsSid,
+            // _3_status: "sent",
+          });
         }
-        await WBUsers.updateOne(userFilter, {
-        //  _2_status: "sent",
-          _2_answer: userMessage,
-          _3_sid: reqBody.SmsSid,
-          _3_status: "sent",
-        })
+        
         updateUser(userContact, dataToUpdate);
       }
     }
