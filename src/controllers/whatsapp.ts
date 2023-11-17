@@ -9,8 +9,6 @@ const encodedUrl = encodeURI(url);
 const { MessagingResponse } = require('twilio').twiml;
 const twiml = new MessagingResponse();
 
-const db:any = [];
-
 const questions = {
   _greetings: {
     display: (name: string) => "જય શ્રી કૃષ્ણ " + name
@@ -19,6 +17,7 @@ const questions = {
     display: `કલ્યાણ કૃપા ફોઉન્ડેશન દ્વારા  આયોજિત "પુષ્ટિ પંચતત્ત્વ મહોત્સવ" અંતર્ગત અવસરમાં આપશ્રી નીચે મુજબ પ્રસંગમાં ઉપસ્થિત થવા ઇચ્છુક છો`,
     error_display: "Please reply with number from below",
     options: "1.સત્સંગ અને મહાપ્રસાદ \n2.સાંસ્કૃતિક કાર્યક્રમ\n3.સંપૂર્ણ મહોત્સવ",
+    optionsx:  ["સત્સંગ અને મહાપ્રસાદ", "સાંસ્કૃતિક કાર્યક્રમ", "સંપૂર્ણ મહોત્સવ"],
     accepted_answers: ["1", "2", "3"]
   },
   _2: {
@@ -32,6 +31,7 @@ const questions = {
     display: "બસ સેવા સ્થળ.",
     error_display: "Please reply with number from below",
     options: `1.નિઝામપુરા\n2.કારેલીબાગ\n3.વાઘોડિયા રોડ\n4.તરસાલી\n5.માંજલપુર\n6.કલાલી\n7.અકોટા\n8.ગોત્રી`,
+    optionsx: ["નિઝામપુરા", "કારેલીબાગ", "વાઘોડિયા રોડ", "તરસાલી", "માંજલપુર", "કલાલી", "અકોટા", "ગોત્રી"],
     accepted_answers: ["1", "2", "3", "4", "5", "6", "7", "8"]
   },
   _help: {
@@ -45,27 +45,9 @@ const questions = {
   },
 }
 
-const footer = `
-  Created by XYZ
-`
-
 const redirect = (req: Request, res: Response) => {
   return res.redirect(301, encodedUrl);
 };
-
-const updateUser = (number: string, data: any) => {
-  // for (let user of db) {
-  //   if (user.phone_number === number) {
-  //     user = { ...user, ...data };
-  //   }
-  // }
-  let index = db.findIndex((o: any) => o.phone_number === number);
-  db[index] = {
-    ...db[index],
-    ...data
-  }
-}
-
 
 const getPhoneNumber = (phoneNumber: string) => {
   return phoneNumber.split(":")[1];
@@ -91,7 +73,6 @@ const updateChatStatus = async (req: Request, res: Response) => {
       await WBUsers.updateOne(findFilter, { _3_status: reqBody.MessageStatus });
     }
   }
-  // console.log("reqBody", reqBody);
   return res.status(200).send(twiml.message("").toString());
 }
 
@@ -170,4 +151,28 @@ const message = async (req: Request, res: Response) => {
   return res.status(200).send(twiml.message("").toString());
 };
 
-export default { redirect, message, updateChatStatus };
+const getAnswer = (options: any, number: string) => { 
+  return options[Number(number) - 1];
+}
+
+const getWBUsersList =async  (req: Request, res: Response) => {
+  const usersList = await WBUsers.find({});
+  for (let user of usersList) {
+    if (user._1_answer) {
+      user._1_answer = getAnswer(questions._1.optionsx, user._1_answer);
+    }
+    if (user._2_answer === "1") {
+      if (user._3_answer) {
+        user._3_answer = getAnswer(questions._3.optionsx, user._3_answer);
+      } else {
+        user._3_answer = "no"
+      }
+    } else {
+      console.log("user 3 not", user);
+      user._3_answer = "--"
+    }
+  }
+  return res.status(200).json(usersList);
+}
+
+export default { redirect, message, updateChatStatus, getWBUsersList };
