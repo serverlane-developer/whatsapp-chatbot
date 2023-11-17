@@ -13,7 +13,7 @@ const db:any = [];
 
 const questions = {
   _greetings: {
-    display: (name: string) => "જયશ્રી કૃષ્ણ" + name
+    display: (name: string) => "જય શ્રી કૃષ્ણ " + name
   },
   _1: {
     display: `કલ્યાણ કૃપા ફોઉન્ડેશન દ્વારા  આયોજિત "પુષ્ટિ પંચતત્ત્વ મહોત્સવ" અંતર્ગત અવસરમાં આપશ્રી નીચે મુજબ પ્રસંગમાં ઉપસ્થિત થવા ઇચ્છુક છો`,
@@ -22,13 +22,14 @@ const questions = {
     accepted_answers: ["1", "2", "3"]
   },
   _2: {
-    display: `"પુષ્ટિ પંચતત્વ મહોત્સવ" નિમિત્તે સંયોજિત નિશુલ્ક બસસેવાનો લાભ લેવા ઇચ્છુક છો?`,
+    display: `"પુષ્ટિ પંચતત્વ મહોત્સવ 2023" નિમિત્તે સંયોજિત નિશુલ્ક બસસેવાનો લાભ લેવા ઇચ્છુક છો?`,
     error_display: "Please reply with number from below",
     options: "1.હા  \n2.ના",
-    accepted_answers: ["yes", "no", "1", "2"]
+    accepted_answers: ["yes", "no", "1", "2"],
+    _no_answered_response: "Thankyou for, you choose no",
   },
   _3: {
-    display: "Choose an item.",
+    display: "બસ સેવા સ્થળ.",
     error_display: "Please reply with number from below",
     options: `1.નિઝામપુરા\n2.કારેલીબાગ\n3.વાઘોડિયા રોડ\n4.તરસાલી\n5.માંજલપુર\n6.કલાલી\n7.અકોટા\n8.ગોત્રી`,
     accepted_answers: ["1", "2", "3", "4", "5", "6", "7", "8"]
@@ -40,7 +41,7 @@ const questions = {
     accepted_answers: ["1", "2", "3", "4", "5", "6"]
   },
   _end: {
-    display: "END",
+    display: "આભાર",
   },
 }
 
@@ -96,7 +97,6 @@ const updateChatStatus = async (req: Request, res: Response) => {
 
 
 const message = async (req: Request, res: Response) => {
-  // console.log(req.body);
   const reqBody = req.body;
   const userContact = getPhoneNumber(req.body?.From);
   const userMessage = req.body.Body;
@@ -111,7 +111,6 @@ const message = async (req: Request, res: Response) => {
     await WBUsers.create({
       phone_number: userContact,
       profile_name: reqBody.ProfileName,
-
       _1_status: "sent",
       _1_answer: null,
       _1_sid: reqBody.SmsSid,
@@ -121,13 +120,12 @@ const message = async (req: Request, res: Response) => {
     console.log('userExists', userExists);
 
     if (isMessageSent(userExists._1_status) && !userExists._2_status && !userExists._3_status) {
-      //QUESTION 1
+      //QUESTION 1 - Reply
       if (!questions._1.accepted_answers.includes(userMessage)) {
-        await twilioHelper.sendMessage(userContact, questions._1.error_display);
+        await twilioHelper.sendMessage(userContact, `${questions._1.error_display} \n${questions._1.options}`);
       } else {
         await twilioHelper.sendMessage(userContact, `${questions._2.display} \n${questions._2.options}`);
         await WBUsers.updateOne(userFilter, {
-        //   _1_status: "sent",
           _1_answer: userMessage,
           _2_sid: reqBody.SmsSid,
           _2_status: "sent",
@@ -136,40 +134,32 @@ const message = async (req: Request, res: Response) => {
     }
 
     if (isMessageSent(userExists._2_status) && !userExists._3_status) {
-      //QUESTION 2
+      //QUESTION 2 - Reply
       if (!questions._2.accepted_answers.includes(String(userMessage).toLowerCase())) {
-        await twilioHelper.sendMessage(userContact, questions._2.error_display);
+        await twilioHelper.sendMessage(userContact, `${questions._2.error_display}\n${questions._2.options}`);
       } else {
-        let dataToUpdate = { _2_answer: ["yes", "1"].includes(String(userMessage).toLowerCase()) ? "1" : "2" }
         if (String(userMessage).toLowerCase() === "yes" || String(userMessage).toLowerCase() === "1") {
           await twilioHelper.sendMessage(userContact, `${questions._3.display} \n${questions._3.options}`);
           await WBUsers.updateOne(userFilter, {
-            //  _2_status: "sent",
             _2_answer: userMessage,
             _3_sid: reqBody.SmsSid,
             _3_status: "sent",
           });
         } else {
+          await twilioHelper.sendMessage(userContact, `${questions._end}`);
           await WBUsers.updateOne(userFilter, {
-            //  _2_status: "sent",
             _2_answer: userMessage,
-            // _3_sid: reqBody.SmsSid,
-            // _3_status: "sent",
           });
         }
-        
-        updateUser(userContact, dataToUpdate);
       }
     }
 
     if (isMessageSent(userExists._3_status) && !userExists._3_answer) {
-      //QUESTION 3
+      //QUESTION 3 - reply
       if (!questions._3.accepted_answers.includes(userMessage)) {
-        // updateUser(userContact, { _2_status: "sent", _2_answer: "" });
         await twilioHelper.sendMessage(userContact, questions._2.error_display);
       } else {
         await WBUsers.updateOne(userFilter, {
-          // _3_status: "sent",
           _3_answer: userMessage,
         })
         // updateUser(userContact, { _3_status: "received", _3_answer: userMessage });
