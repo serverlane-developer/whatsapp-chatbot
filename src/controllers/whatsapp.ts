@@ -3,6 +3,7 @@ import config from "../config";
 import twilioHelper from "../utils/twilio";
 import WBUsers from "../mongo/models/WBUsers";
 import path from 'path';
+import moment from "moment";
 
 const { WHATSAPP_NUMBER, WHATSAPP_TEXT } = config;
 const url = `https://wa.me/+91${WHATSAPP_NUMBER}/?text=${WHATSAPP_TEXT}`;
@@ -172,6 +173,7 @@ const getWBUsersList =async  (req: Request, res: Response) => {
       console.log("user 3 not", user);
       user._3_answer = "--"
     }
+    user.createdAt = moment(user.createdAt).format("lll");
   }
   return res.status(200).json(usersList);
 }
