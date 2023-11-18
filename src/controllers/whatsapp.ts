@@ -100,8 +100,6 @@ const message = async (req: Request, res: Response) => {
     });
   } else {
 
-    console.log('userExists', userExists);
-
     if (isMessageSent(userExists._1_status) && !userExists._2_status && !userExists._3_status) {
       //QUESTION 1 - Reply
       if (!questions._1.accepted_answers.includes(userMessage)) {
@@ -170,7 +168,6 @@ const getWBUsersList =async  (req: Request, res: Response) => {
         user._3_answer = "no"
       }
     } else {
-      console.log("user 3 not", user);
       user._3_answer = "--"
     }
     user.createdAt = moment(user.createdAt).format("lll");
