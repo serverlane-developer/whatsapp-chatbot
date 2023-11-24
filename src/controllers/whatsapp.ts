@@ -127,7 +127,7 @@ const message = async (req: Request, res: Response) => {
             _3_status: "sent",
           });
         } else {
-          await twilioHelper.sendMessage(userContact, `${questions._end}`);
+          await twilioHelper.sendMessage(userContact, `${questions._end.display}`);
           await WBUsers.updateOne(userFilter, {
             _2_answer: userMessage,
           });
